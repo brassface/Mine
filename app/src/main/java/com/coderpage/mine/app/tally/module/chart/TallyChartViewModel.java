@@ -80,6 +80,9 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
     private List<CategoryData> mCategoryYearlyExpenseList = new ArrayList<>();
     private List<CategoryData> mCategoryYearlyIncomeList = new ArrayList<>();
 
+    /** 当前选中的日期；null 表示展示整月 */
+    private DailyData mSelectedDailyData;
+
     /** 月单位的收入列表 */
     private MutableLiveData<MonthlyDataList> mObservableMonthlyDataList = new MutableLiveData<>();
     /** 日单位的支出列表 */
@@ -90,6 +93,8 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
     private MutableLiveData<List<CategoryData>> mObservableCategoryExpenseDataList = new MutableLiveData<>();
     /** 收入分类金额列表 */
     private MutableLiveData<List<CategoryData>> mObservableCategoryIncomeDataList = new MutableLiveData<>();
+    /** 柱图选中下标，供 Activity 高亮与滚动；-1 表示取消选中 */
+    private MutableLiveData<Integer> mObservableBarHighlightIndex = new MutableLiveData<>();
 
     private MutableLiveData<ViewReliedTask<Activity>> mViewReliedTask = new MutableLiveData<>();
 
@@ -140,6 +145,10 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
         return mObservableCategoryIncomeDataList;
     }
 
+    LiveData<Integer> getBarHighlightIndex() {
+        return mObservableBarHighlightIndex;
+    }
+
     LiveData<ViewReliedTask<Activity>> getViewReliedTask() {
         return mViewReliedTask;
     }
@@ -162,10 +171,76 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
                 mStartDate.setTimeInMillis(monthDateRange.first);
                 mEndDate.setTimeInMillis(monthDateRange.second);
 
+                clearSelectedDay(false);
                 clearData();
                 refreshData();
             }
         }, currentMonth).show();
+    }
+
+    /**
+     * 日柱选中：下方饼图/分类切换为当天数据
+     */
+    void onDailyBarSelected(DailyData dailyData) {
+        if (dailyData == null || !mDisplayDailyChart.get()) {
+            return;
+        }
+        mSelectedDailyData = dailyData;
+        displaySelectedDayAmountTotal();
+        loadCategoryForSelectedDay();
+    }
+
+    /**
+     * 取消日柱选中：下方恢复当月数据
+     */
+    void onDailyBarCleared() {
+        clearSelectedDay(true);
+    }
+
+    /** 上一天 */
+    public void onPrevDayClick() {
+        if (!mDisplayDailyChart.get()) {
+            return;
+        }
+        DailyData baseline = mSelectedDailyData;
+        if (baseline == null) {
+            List<DailyData> list = getCurrentDailyList();
+            if (list == null || list.isEmpty()) {
+                return;
+            }
+            baseline = list.get(0);
+        }
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.YEAR, baseline.getYear());
+        calendar.set(Calendar.MONTH, baseline.getMonth() - 1);
+        calendar.set(Calendar.DAY_OF_MONTH, baseline.getDayOfMonth());
+        calendar.add(Calendar.DAY_OF_MONTH, -1);
+        selectOrSwitchToDay(calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH) + 1,
+                calendar.get(Calendar.DAY_OF_MONTH));
+    }
+
+    /** 下一天 */
+    public void onNextDayClick() {
+        if (!mDisplayDailyChart.get()) {
+            return;
+        }
+        DailyData baseline = mSelectedDailyData;
+        if (baseline == null) {
+            List<DailyData> list = getCurrentDailyList();
+            if (list == null || list.isEmpty()) {
+                return;
+            }
+            baseline = list.get(0);
+        }
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.YEAR, baseline.getYear());
+        calendar.set(Calendar.MONTH, baseline.getMonth() - 1);
+        calendar.set(Calendar.DAY_OF_MONTH, baseline.getDayOfMonth());
+        calendar.add(Calendar.DAY_OF_MONTH, 1);
+        selectOrSwitchToDay(calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH) + 1,
+                calendar.get(Calendar.DAY_OF_MONTH));
     }
 
     /** 月账单 每日数据 点击 */
@@ -213,6 +288,7 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
     public void onSwitchChartModelClick() {
         if (mDisplayDailyChart.get()) {
             // 当前显示为 日账单，切换为年账单
+            clearSelectedDay(false);
             onSelectAsYearChartClick();
         } else {
             // 当前显示为 年账单，切换为日账单
@@ -318,15 +394,33 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
                 }
                 if (isDisplayExpense) {
                     mObservableDailyExpenseList.postValue(mDailyExpenseList);
-                    mObservableCategoryExpenseDataList.postValue(mCategoryDailyExpenseList);
                 } else {
                     mObservableDailyIncomeList.postValue(mDailyIncomeList);
-                    mObservableCategoryIncomeDataList.postValue(mCategoryDailyIncomeList);
                 }
 
                 // 显示账单金额
-                displayDailyExpenseAmountTotal();
-                displayDailyIncomeAmountTotal();
+                if (mSelectedDailyData != null) {
+                    DailyData matched = findDailyData(getCurrentDailyList(),
+                            mSelectedDailyData.getYear(),
+                            mSelectedDailyData.getMonth(),
+                            mSelectedDailyData.getDayOfMonth());
+                    if (matched != null) {
+                        mSelectedDailyData = matched;
+                        displaySelectedDayAmountTotal();
+                        loadCategoryForSelectedDay();
+                        int index = findDailyIndex(getCurrentDailyList(), matched);
+                        mObservableBarHighlightIndex.postValue(index);
+                    } else {
+                        clearSelectedDay(true);
+                        publishMonthCategoryData();
+                        displayDailyExpenseAmountTotal();
+                        displayDailyIncomeAmountTotal();
+                    }
+                } else {
+                    publishMonthCategoryData();
+                    displayDailyExpenseAmountTotal();
+                    displayDailyIncomeAmountTotal();
+                }
             });
         } else {
             queryYearlyData(v -> {
@@ -601,6 +695,147 @@ public class TallyChartViewModel extends BaseViewModel implements LifecycleObser
                 }
             });
         }
+    }
+
+    /** 发布当月分类数据到饼图/列表 */
+    private void publishMonthCategoryData() {
+        if (mDisplayExpenseChart.get()) {
+            mObservableCategoryExpenseDataList.postValue(new ArrayList<>(mCategoryDailyExpenseList));
+        } else {
+            mObservableCategoryIncomeDataList.postValue(new ArrayList<>(mCategoryDailyIncomeList));
+        }
+    }
+
+    private void clearSelectedDay(boolean publishMonthData) {
+        mSelectedDailyData = null;
+        mObservableBarHighlightIndex.setValue(-1);
+        if (publishMonthData && mDisplayDailyChart.get()) {
+            publishMonthCategoryData();
+            displayDailyExpenseAmountTotal();
+            displayDailyIncomeAmountTotal();
+        }
+    }
+
+    private List<DailyData> getCurrentDailyList() {
+        return mDisplayExpenseChart.get() ? mDailyExpenseList : mDailyIncomeList;
+    }
+
+    private int findDailyIndex(List<DailyData> list, DailyData target) {
+        if (list == null || target == null) {
+            return -1;
+        }
+        for (int i = 0; i < list.size(); i++) {
+            DailyData item = list.get(i);
+            if (item != null
+                    && item.getYear() == target.getYear()
+                    && item.getMonth() == target.getMonth()
+                    && item.getDayOfMonth() == target.getDayOfMonth()) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private DailyData findDailyData(List<DailyData> list, int year, int month, int dayOfMonth) {
+        if (list == null) {
+            return null;
+        }
+        for (DailyData item : list) {
+            if (item != null
+                    && item.getYear() == year
+                    && item.getMonth() == month
+                    && item.getDayOfMonth() == dayOfMonth) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private void selectOrSwitchToDay(int year, int month, int dayOfMonth) {
+        int currentYear = mStartDate.get(Calendar.YEAR);
+        int currentMonth = mStartDate.get(Calendar.MONTH) + 1;
+        if (year == currentYear && month == currentMonth) {
+            DailyData day = findDailyData(getCurrentDailyList(), year, month, dayOfMonth);
+            if (day != null) {
+                onDailyBarSelected(day);
+                int index = findDailyIndex(getCurrentDailyList(), day);
+                mObservableBarHighlightIndex.setValue(index);
+            }
+            return;
+        }
+        Pair<Long, Long> monthDateRange = DateUtils.monthDateRange(year, month);
+        mStartDate.setTimeInMillis(monthDateRange.first);
+        mEndDate.setTimeInMillis(monthDateRange.second);
+        mSelectedDailyData = new DailyData();
+        mSelectedDailyData.setYear(year);
+        mSelectedDailyData.setMonth(month);
+        mSelectedDailyData.setDayOfMonth(dayOfMonth);
+        clearData();
+        refreshData();
+    }
+
+    private void loadCategoryForSelectedDay() {
+        if (mSelectedDailyData == null) {
+            return;
+        }
+        Pair<Long, Long> dayRange = DateUtils.dayDateRange(
+                mSelectedDailyData.getYear(),
+                mSelectedDailyData.getMonth(),
+                mSelectedDailyData.getDayOfMonth());
+        boolean isExpense = mDisplayExpenseChart.get();
+        if (isExpense) {
+            mRepository.queryCategoryExpense(dayRange.first, dayRange.second, new Callback<List<CategoryData>, IError>() {
+                @Override
+                public void success(List<CategoryData> categoryData) {
+                    mObservableCategoryExpenseDataList.postValue(
+                            categoryData == null ? new ArrayList<>() : categoryData);
+                }
+
+                @Override
+                public void failure(IError iError) {
+                    mObservableCategoryExpenseDataList.postValue(new ArrayList<>());
+                }
+            });
+        } else {
+            mRepository.queryCategoryIncome(dayRange.first, dayRange.second, new Callback<List<CategoryData>, IError>() {
+                @Override
+                public void success(List<CategoryData> categoryData) {
+                    mObservableCategoryIncomeDataList.postValue(
+                            categoryData == null ? new ArrayList<>() : categoryData);
+                }
+
+                @Override
+                public void failure(IError iError) {
+                    mObservableCategoryIncomeDataList.postValue(new ArrayList<>());
+                }
+            });
+        }
+    }
+
+    /** 显示选中日期的支出/收入汇总 */
+    private void displaySelectedDayAmountTotal() {
+        if (mSelectedDailyData == null) {
+            return;
+        }
+        int year = mSelectedDailyData.getYear();
+        int month = mSelectedDailyData.getMonth();
+        int day = mSelectedDailyData.getDayOfMonth();
+        mCurrentDateText.set(ResUtils.getString(getApplication(),
+                R.string.tally_bill_of_day_format, year, month, day));
+
+        DailyData expenseDay = findDailyData(mDailyExpenseList, year, month, day);
+        DailyData incomeDay = findDailyData(mDailyIncomeList, year, month, day);
+        long expenseCount = expenseDay == null ? 0 : expenseDay.getCount();
+        double expenseAmount = expenseDay == null ? 0 : expenseDay.getAmount();
+        long incomeCount = incomeDay == null ? 0 : incomeDay.getCount();
+        double incomeAmount = incomeDay == null ? 0 : incomeDay.getAmount();
+
+        String expenseMoney = "¥" + TallyUtils.formatDisplayMoney(expenseAmount);
+        String incomeMoney = "¥" + TallyUtils.formatDisplayMoney(incomeAmount);
+        mExpenseTotalAmountText.set(ResUtils.getString(getApplication(),
+                R.string.tally_expense_data_format, expenseCount, expenseMoney));
+        mIncomeTotalAmountText.set(ResUtils.getString(getApplication(),
+                R.string.tally_income_data_format, incomeCount, incomeMoney));
     }
 
     /** 显示日账单支出总额 */

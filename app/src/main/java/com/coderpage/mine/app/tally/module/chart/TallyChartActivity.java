@@ -50,6 +50,9 @@ import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -178,6 +181,18 @@ public class TallyChartActivity extends BaseActivity {
                 task.execute(this);
             }
         });
+        mViewModel.getBarHighlightIndex().observe(this, index -> {
+            if (index == null || mBarChart.getData() == null) {
+                return;
+            }
+            if (index < 0) {
+                mBarChart.highlightValues(null);
+                return;
+            }
+            mBarChart.highlightValue(index, 0);
+            float targetX = Math.max(0, index - 4);
+            mBarChart.moveViewToX(targetX);
+        });
     }
 
     @Override
@@ -230,7 +245,7 @@ public class TallyChartActivity extends BaseActivity {
             barDataSet.setColor(barColor);
 
             barData = new BarData(barDataSet);
-            barData.setBarWidth(0.5f);
+            barData.setBarWidth(0.8f);
         }
 
         XAxis xAxis = mBarChart.getXAxis();
@@ -239,16 +254,22 @@ public class TallyChartActivity extends BaseActivity {
         xAxis.setDrawGridLines(false);
         xAxis.setGridColor(ResUtils.getColor(this, R.color.chartGridLine));
         xAxis.setDrawAxisLine(true);
-        xAxis.setLabelCount(yValues.size());
+        xAxis.setGranularity(1f);
+        xAxis.setLabelCount(Math.min(10, Math.max(yValues.size(), 1)));
         xAxis.setValueFormatter((value, axis) -> {
             String format = "";
-            if (value != 0
-                    && value != axis.mEntryCount - 1
-                    && value != axis.mEntryCount / 2) {
+            int index = Math.round(value);
+            if (index < 0 || dailyDataList == null || index >= dailyDataList.size()) {
                 return format;
             }
-            DailyData dailyData = dailyDataList != null && dailyDataList.size() > value ?
-                    dailyDataList.get((int) value) : null;
+            // 首尾与中间刻度显示日期，避免一屏过密
+            if (index != 0
+                    && index != dailyDataList.size() - 1
+                    && index != axis.mEntryCount / 2
+                    && index % 3 != 0) {
+                return format;
+            }
+            DailyData dailyData = dailyDataList.get(index);
             if (dailyData != null) {
                 return dailyData.getMonth() + "-" + dailyData.getDayOfMonth();
             }
@@ -278,14 +299,40 @@ public class TallyChartActivity extends BaseActivity {
         mBarChart.setMarker(markerView);
         mBarChart.setNoDataText(ResUtils.getString(self(), R.string.tally_chart_empty_tip));
         mBarChart.setNoDataTextColor(ResUtils.getColor(self(), R.color.appTextColorPrimary));
-        mBarChart.setScaleEnabled(false);
+        mBarChart.setScaleEnabled(true);
+        mBarChart.setScaleYEnabled(false);
+        mBarChart.setScaleXEnabled(false);
+        mBarChart.setDragEnabled(true);
+        mBarChart.setPinchZoom(false);
+        mBarChart.setDoubleTapToZoomEnabled(false);
+        mBarChart.setDragDecelerationEnabled(true);
         mBarChart.setDrawBorders(false);
         mBarChart.setDrawBarShadow(true);
         mBarChart.setDrawGridBackground(false);
         mBarChart.setDrawValueAboveBar(false);
+        mBarChart.setFitBars(true);
         mBarChart.setDescription(null);
         mBarChart.getLegend().setEnabled(false);
+        mBarChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
+                if (e != null && e.getData() instanceof DailyData) {
+                    mViewModel.onDailyBarSelected((DailyData) e.getData());
+                }
+            }
+
+            @Override
+            public void onNothingSelected() {
+                mViewModel.onDailyBarCleared();
+            }
+        });
         mBarChart.setData(barData);
+        if (barData != null && yValues.size() > 0) {
+            float visibleCount = Math.min(10f, yValues.size());
+            mBarChart.setVisibleXRangeMaximum(visibleCount);
+            mBarChart.setVisibleXRangeMinimum(visibleCount);
+            mBarChart.moveViewToX(0f);
+        }
         mBarChart.animateY(500);
     }
 
