@@ -21,4 +21,6 @@ public class TallyRouter {
     public static final String BACKUP_FILE = "/app/tally/backUpFile";
     /** 备份数据管理页 */
     public static final String BACKUP_FILE_MANAGER = "/app/tally/backUpFileManager";
+    /** 资产详情页 */
+    public static final String ACCOUNT = "/app/tally/account";
 }

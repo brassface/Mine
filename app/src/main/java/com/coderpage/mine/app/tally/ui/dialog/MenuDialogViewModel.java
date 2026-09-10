@@ -75,6 +75,11 @@ public class MenuDialogViewModel extends BaseViewModel {
                 ResUtils.getString(getApplication(), R.string.menu_tally_records),
                 TallyRouter.RECORDS,
                 ResUtils.getDrawable(getApplication(), R.drawable.ic_list)));
+        // 资产详情
+        menuList.add(new MenuDialogItem(
+                ResUtils.getString(getApplication(), R.string.menu_tally_account),
+                TallyRouter.ACCOUNT,
+                ResUtils.getDrawable(getApplication(), R.drawable.ic_account)));
         // 图表
         menuList.add(new MenuDialogItem(
                 ResUtils.getString(getApplication(), R.string.menu_tally_chart),

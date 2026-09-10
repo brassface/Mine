@@ -14,12 +14,16 @@ import com.coderpage.base.utils.LogUtils;
 import com.coderpage.concurrency.AsyncTaskExecutor;
 import com.coderpage.mine.BuildConfig;
 import com.coderpage.mine.app.tally.common.error.ErrorCode;
+import com.coderpage.mine.app.tally.persistence.model.Account;
 import com.coderpage.mine.app.tally.persistence.model.CategoryModel;
 import com.coderpage.mine.app.tally.persistence.model.Record;
 import com.coderpage.mine.app.tally.persistence.sql.TallyDatabase;
+import com.coderpage.mine.app.tally.persistence.sql.dao.AccountDao;
 import com.coderpage.mine.app.tally.persistence.sql.dao.CategoryDao;
+import com.coderpage.mine.app.tally.persistence.sql.entity.AccountEntity;
 import com.coderpage.mine.app.tally.persistence.sql.entity.CategoryEntity;
 import com.coderpage.mine.app.tally.persistence.sql.entity.RecordEntity;
+import com.coderpage.mine.app.tally.module.account.AccountRepository;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -30,6 +34,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.coderpage.base.utils.LogUtils.LOGE;
 import static com.coderpage.base.utils.LogUtils.makeLogTag;
@@ -184,22 +189,42 @@ public class Backup {
             listener.onProgressUpdate(RestoreProgress.RESTORE_TO_DB);
 
             BackupModelMetadata metadata = backupModel.getMetadata();
+            Map<Long, Long> accountIdMap = new HashMap<>();
+
+            // 恢复账户表数据
+            List<BackupModelAccount> accountList = backupModel.getAccountList();
+            if (accountList != null && !accountList.isEmpty()) {
+                boolean restoreAccountOk = restoreAccountTable(accountList, accountIdMap);
+                if (!restoreAccountOk) {
+                    listener.failure(new NonThrowError(ErrorCode.SQL_ERR, "恢复账户数据失败"));
+                    return;
+                }
+            }
+
             // 恢复分类表数据
             List<BackupModelCategory> categoryList = backupModel.getCategoryList();
             if (categoryList != null && !categoryList.isEmpty()) {
                 boolean restoreCategoryOk = restoreCategoryTable(metadata, categoryList);
                 if (!restoreCategoryOk) {
                     listener.failure(new NonThrowError(ErrorCode.SQL_ERR, "恢复分类数据失败"));
+                    return;
                 }
             }
 
             // 恢复消费表数据
             List<BackupModelRecord> expenseList = backupModel.getExpenseList();
             if (expenseList != null && !expenseList.isEmpty()) {
-                boolean restoreExpenseOk = restoreExpenseTable(metadata, expenseList);
+                boolean restoreExpenseOk = restoreExpenseTable(metadata, expenseList, accountIdMap);
                 if (!restoreExpenseOk) {
                     listener.failure(new NonThrowError(ErrorCode.SQL_ERR, "恢复消费数据失败"));
+                    return;
                 }
+            }
+
+            // 兜底：未绑定账户的记录挂到默认账户
+            Account defaultAccount = new AccountRepository().queryDefaultSync();
+            if (defaultAccount != null) {
+                TallyDatabase.getInstance().accountDao().bindOrphanRecords(defaultAccount.getId());
             }
 
             listener.success(backupModel);
@@ -214,6 +239,75 @@ public class Backup {
      */
     public static List<File> listBackupFiles(Context context) {
         return new BackupCache(context).listBackupFiles();
+    }
+
+    private static boolean restoreAccountTable(List<BackupModelAccount> accountList,
+                                               Map<Long, Long> accountIdMap) {
+        AccountDao accountDao = TallyDatabase.getInstance().accountDao();
+        List<AccountEntity> currentList = accountDao.queryAll();
+        Map<String, AccountEntity> syncIdMap = new HashMap<>();
+        for (AccountEntity entity : currentList) {
+            syncIdMap.put(entity.getSyncId(), entity);
+        }
+
+        try {
+            for (BackupModelAccount backupAccount : accountList) {
+                if (backupAccount == null) {
+                    continue;
+                }
+                AccountEntity exist = TextUtils.isEmpty(backupAccount.getSyncId())
+                        ? null : syncIdMap.get(backupAccount.getSyncId());
+                if (exist != null) {
+                    if (backupAccount.getId() > 0) {
+                        accountIdMap.put(backupAccount.getId(), exist.getId());
+                    }
+                    continue;
+                }
+
+                AccountEntity entity = new AccountEntity();
+                entity.setName(TextUtils.isEmpty(backupAccount.getName()) ? "" : backupAccount.getName());
+                entity.setInitialBalance(backupAccount.getInitialBalance());
+                entity.setIsDefault(0);
+                entity.setOrder(backupAccount.getOrder());
+                entity.setSyncId(TextUtils.isEmpty(backupAccount.getSyncId())
+                        ? String.valueOf(System.currentTimeMillis()) + Math.random()
+                        : backupAccount.getSyncId());
+                entity.setCreateTime(backupAccount.getCreateTime() > 0
+                        ? backupAccount.getCreateTime() : System.currentTimeMillis());
+                long newId = accountDao.insert(entity);
+                entity.setId(newId);
+                syncIdMap.put(entity.getSyncId(), entity);
+                if (backupAccount.getId() > 0) {
+                    accountIdMap.put(backupAccount.getId(), newId);
+                }
+            }
+
+            // 恢复默认标记
+            AccountEntity defaultEntity = null;
+            for (BackupModelAccount backupAccount : accountList) {
+                if (backupAccount != null && backupAccount.getIsDefault() == 1 && backupAccount.getId() > 0) {
+                    Long mappedId = accountIdMap.get(backupAccount.getId());
+                    if (mappedId != null) {
+                        defaultEntity = accountDao.queryById(mappedId);
+                        break;
+                    }
+                }
+            }
+            if (defaultEntity == null && accountDao.queryDefault() == null) {
+                List<AccountEntity> all = accountDao.queryAll();
+                if (!all.isEmpty()) {
+                    defaultEntity = all.get(0);
+                }
+            }
+            if (defaultEntity != null) {
+                accountDao.clearDefault();
+                accountDao.setDefault(defaultEntity.getId());
+            }
+            return true;
+        } catch (Exception e) {
+            LOGE(TAG, "恢复数据失败-账户表", e);
+        }
+        return false;
     }
 
     private static boolean restoreCategoryTable(BackupModelMetadata metadata,
@@ -265,7 +359,8 @@ public class Backup {
     }
 
     private static boolean restoreExpenseTable(BackupModelMetadata metadata,
-                                               List<BackupModelRecord> expenseList) {
+                                               List<BackupModelRecord> expenseList,
+                                               Map<Long, Long> accountIdMap) {
         // 0.6.0 版本之前备份的数据。单独处理
         if (metadata.getClientVersionCode() < 60) {
             return restoreExpenseTableBefore060(expenseList);
@@ -277,7 +372,10 @@ public class Backup {
             BackupModelRecord backupExpense = expenseList.get(i);
 
             RecordEntity entity = new RecordEntity();
-            entity.setAccountId(backupExpense.getAccountId());
+            long oldAccountId = backupExpense.getAccountId();
+            long mappedAccountId = accountIdMap.containsKey(oldAccountId)
+                    ? accountIdMap.get(oldAccountId) : oldAccountId;
+            entity.setAccountId(mappedAccountId);
             entity.setAmount(backupExpense.getAmount());
             entity.setTime(backupExpense.getTime());
             entity.setCategoryUniqueName(backupExpense.getCategoryUniqueName());
@@ -354,10 +452,24 @@ public class Backup {
     private static BackupModel readData() {
 
         List<BackupModelCategory> categoryList = new ArrayList<>();
+        List<BackupModelAccount> accountList = new ArrayList<>();
         List<BackupModelRecord> recordList = null;
         BackupModelMetadata metadata = new BackupModelMetadata();
 
         TallyDatabase database = TallyDatabase.getInstance();
+
+        List<AccountEntity> accountEntityList = database.accountDao().queryAll();
+        for (AccountEntity entity : accountEntityList) {
+            BackupModelAccount account = new BackupModelAccount();
+            account.setId(entity.getId());
+            account.setName(entity.getName());
+            account.setInitialBalance(entity.getInitialBalance());
+            account.setIsDefault(entity.getIsDefault());
+            account.setOrder(entity.getOrder());
+            account.setSyncId(entity.getSyncId());
+            account.setCreateTime(entity.getCreateTime());
+            accountList.add(account);
+        }
 
         List<CategoryModel> categoryEntityList = database.categoryDao().allCategory();
         for (CategoryModel entity : categoryEntityList) {
@@ -399,6 +511,7 @@ public class Backup {
         BackupModel backupModel = new BackupModel();
 
         backupModel.setMetadata(metadata);
+        backupModel.setAccountList(accountList);
         backupModel.setCategoryList(categoryList);
         backupModel.setExpenseList(recordList);
 

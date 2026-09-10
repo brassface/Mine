@@ -15,20 +15,24 @@ import com.coderpage.mine.MineApp;
 import com.coderpage.mine.R;
 import com.coderpage.mine.app.tally.data.CategoryContant;
 import com.coderpage.mine.app.tally.data.CategoryIconHelper;
+import com.coderpage.mine.app.tally.persistence.sql.dao.AccountDao;
 import com.coderpage.mine.app.tally.persistence.sql.dao.CategoryDao;
 import com.coderpage.mine.app.tally.persistence.sql.dao.RecordDao;
+import com.coderpage.mine.app.tally.persistence.sql.entity.AccountEntity;
 import com.coderpage.mine.app.tally.persistence.sql.entity.CategoryEntity;
 import com.coderpage.mine.app.tally.persistence.sql.entity.RecordEntity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * @author lc. 2018-05-20 15:28
  * @since 0.6.0
  */
 
-@Database(entities = {RecordEntity.class, CategoryEntity.class}, version = 60, exportSchema = false)
+@Database(entities = {RecordEntity.class, CategoryEntity.class, AccountEntity.class},
+        version = 70, exportSchema = false)
 public abstract class TallyDatabase extends RoomDatabase {
     /** sqlite db name */
     private static final String DATABASE_NAME = "sql_tally";
@@ -39,6 +43,8 @@ public abstract class TallyDatabase extends RoomDatabase {
     private static final int VERSION_0_4_0 = 40;
     /** db version of app version 0.6.0 */
     private static final int VERSION_0_6_0 = 60;
+    /** db version with account table */
+    private static final int VERSION_0_7_0 = 70;
 
     private static TallyDatabase sInstance = null;
 
@@ -56,6 +62,13 @@ public abstract class TallyDatabase extends RoomDatabase {
      */
     public abstract CategoryDao categoryDao();
 
+    /**
+     * 账户表
+     *
+     * @return 账户表操作
+     */
+    public abstract AccountDao accountDao();
+
     public static TallyDatabase getInstance() {
         if (sInstance == null) {
             synchronized (TallyDatabase.class) {
@@ -63,7 +76,7 @@ public abstract class TallyDatabase extends RoomDatabase {
                     sInstance = Room.databaseBuilder(
                             MineApp.getAppContext(),
                             TallyDatabase.class, DATABASE_NAME)
-                            .addMigrations(MIGRATION_010_040, MIGRATION_040_060)
+                            .addMigrations(MIGRATION_010_040, MIGRATION_040_060, MIGRATION_060_070)
                             .addCallback(mTallDatabaseCallback)
                             .allowMainThreadQueries()
                             .build();
@@ -109,6 +122,8 @@ public abstract class TallyDatabase extends RoomDatabase {
 
             // 插入记录事务
             db.beginTransaction();
+            // 插入默认账户
+            long defaultAccountId = insertDefaultAccount(db, context);
             // 插入分类
             for (CategoryItem categoryItem : categoryList) {
                 ContentValues values = new ContentValues(4);
@@ -125,6 +140,7 @@ public abstract class TallyDatabase extends RoomDatabase {
             }
             db.setTransactionSuccessful();
             db.endTransaction();
+            LogUtils.LOGI("TallyDatabase", "insert default account. id:" + defaultAccountId);
         }
     };
 
@@ -262,6 +278,39 @@ public abstract class TallyDatabase extends RoomDatabase {
             database.endTransaction();
         }
     };
+
+    private static final Migration MIGRATION_060_070 = new Migration(VERSION_0_6_0, VERSION_0_7_0) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS account ("
+                    + "account_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,"
+                    + "account_name TEXT NOT NULL,"
+                    + "account_initial_balance REAL NOT NULL,"
+                    + "account_is_default INTEGER NOT NULL,"
+                    + "account_order INTEGER NOT NULL,"
+                    + "account_sync_id TEXT NOT NULL,"
+                    + "account_create_time INTEGER NOT NULL,"
+                    + "UNIQUE (account_sync_id) ON CONFLICT IGNORE)");
+            database.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_account_account_sync_id "
+                    + "on account(account_sync_id)");
+
+            Context context = MineApp.getAppContext();
+            long defaultAccountId = insertDefaultAccount(database, context);
+            database.execSQL("UPDATE record SET record_account_id = " + defaultAccountId
+                    + " WHERE record_account_id = 0");
+        }
+    };
+
+    private static long insertDefaultAccount(SupportSQLiteDatabase db, Context context) {
+        ContentValues values = new ContentValues();
+        values.put("account_name", context.getString(R.string.tally_account_default_name));
+        values.put("account_initial_balance", 0);
+        values.put("account_is_default", 1);
+        values.put("account_order", 0);
+        values.put("account_sync_id", UUID.randomUUID().toString());
+        values.put("account_create_time", System.currentTimeMillis());
+        return db.insert("account", SQLiteDatabase.CONFLICT_NONE, values);
+    }
 
     private static class CategoryItem {
         private String uniqueName;

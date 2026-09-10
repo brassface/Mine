@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+
+    <data class=".module.account.ItemAccountManagerBinding">
+
+        <import type="android.view.View" />
+
+        <import type="com.coderpage.mine.app.tally.common.utils.TallyUtils" />
+
+        <variable
+            name="activity"
+            type="android.app.Activity" />
+
+        <variable
+            name="data"
+            type="com.coderpage.mine.app.tally.persistence.model.Account" />
+
+        <variable
+            name="vm"
+            type="com.coderpage.mine.app.tally.module.account.AccountManagerViewModel" />
+    </data>
+
+    <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_common_card_white"
+        android:paddingTop="@dimen/padding_normal"
+        android:paddingBottom="@dimen/padding_normal">
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_normal"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@{data.name}"
+            android:textColor="@color/appTextColorPrimary"
+            android:textSize="@dimen/app_text_size_normal"
+            app:layout_constraintEnd_toStartOf="@id/tvBalance"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="现金" />
+
+        <TextView
+            android:id="@+id/tvBalance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/padding_normal"
+            android:text="@{`¥` + TallyUtils.formatDisplayMoney(data.balance)}"
+            android:textColor="@color/appTextColorPrimary"
+            android:textSize="@dimen/app_text_size_normal"
+            app:layout_constraintBaseline_toBaselineOf="@id/tvName"
+            app:layout_constraintEnd_toEndOf="parent"
+            tools:text="¥100.00" />
+
+        <TextView
+            android:id="@+id/tvDefaultTag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/padding_normal"
+            android:layout_marginTop="@dimen/spacing_micro"
+            android:text="@string/tally_account_default_tag"
+            android:textColor="@color/appTextColorSecondary"
+            android:textSize="@dimen/app_text_size_small"
+            android:visibility="@{data.defaultAccount ? View.VISIBLE : View.GONE}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvName" />
+
+        <TextView
+            android:id="@+id/tvSetDefault"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_micro"
+            android:layout_marginEnd="@dimen/padding_micro"
+            android:background="@drawable/bg_clickable_view_40dp"
+            android:onClick="@{() -> vm.onSetDefaultClick(data)}"
+            android:padding="@dimen/spacing_micro"
+            android:text="@string/tally_account_set_default"
+            android:textColor="?attr/colorAccent"
+            android:textSize="@dimen/app_text_size_small"
+            android:visibility="@{data.defaultAccount ? View.GONE : View.VISIBLE}"
+            app:layout_constraintEnd_toStartOf="@id/tvDelete"
+            app:layout_constraintTop_toBottomOf="@id/tvBalance" />
+
+        <TextView
+            android:id="@+id/tvDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_micro"
+            android:layout_marginEnd="@dimen/padding_normal"
+            android:background="@drawable/bg_clickable_view_40dp"
+            android:onClick="@{() -> vm.onDeleteClick(activity, data)}"
+            android:padding="@dimen/spacing_micro"
+            android:text="@string/delete"
+            android:textColor="@color/appTextColorSecondary"
+            android:textSize="@dimen/app_text_size_small"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvBalance" />
+
+    </android.support.constraint.ConstraintLayout>
+
+</layout>
