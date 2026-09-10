@@ -37,9 +37,43 @@ public class MineLineChart extends LineChart {
     @Override
     protected void init() {
         super.init();
-        mChartTouchListener = new MineLineChartTouchListener(this, mViewPortHandler.getMatrixTouch(), 3f);
+        MineLineChartTouchListener touchListener =
+                new MineLineChartTouchListener(this, mViewPortHandler.getMatrixTouch(), 3f);
+        touchListener.setStableSelection(true);
+        // 年折线：不响应顶部 Marker 点击跳转列表，点上方按空白处理
+        touchListener.setMarkerClickEnabled(false);
+        mChartTouchListener = touchListener;
         mRenderer = new MineLineChartRender(this, mAnimator, mViewPortHandler);
         ((MineLineChartRender) mRenderer).setValueGridLineColor(ResUtils.getColor(getContext(), R.color.chartGridLine));
+        setHighlighter(new StrictLineHighlighter(this));
+    }
+
+    /**
+     * 程序化高亮并同步触摸层的 lastHighlighted
+     */
+    public void highlightIndexSilently(int index) {
+        if (index < 0 || getData() == null || getData().getDataSetCount() <= 0) {
+            clearHighlightSilently();
+            return;
+        }
+        int entryCount = getData().getDataSetByIndex(0).getEntryCount();
+        if (index >= entryCount) {
+            clearHighlightSilently();
+            return;
+        }
+        highlightValue(index, 0, false);
+        Highlight[] highs = getHighlighted();
+        if (mChartTouchListener != null) {
+            mChartTouchListener.setLastHighlighted(
+                    highs != null && highs.length > 0 ? highs[0] : null);
+        }
+    }
+
+    public void clearHighlightSilently() {
+        highlightValues(null);
+        if (mChartTouchListener != null) {
+            mChartTouchListener.setLastHighlighted(null);
+        }
     }
 
     public void setDrawMarkOnTop(boolean drawMarkOnTop) {
@@ -85,10 +119,13 @@ public class MineLineChart extends LineChart {
             IDataSet set = mData.getDataSetByIndex(highlight.getDataSetIndex());
 
             Entry e = mData.getEntryForHighlight(mIndicesToHighlight[i]);
+            if (e == null || set == null) {
+                continue;
+            }
             int entryIndex = set.getEntryIndex(e);
 
             // make sure entry not null
-            if (e == null || entryIndex > set.getEntryCount() * mAnimator.getPhaseX()) {
+            if (entryIndex < 0 || entryIndex > set.getEntryCount() * mAnimator.getPhaseX()) {
                 continue;
             }
 

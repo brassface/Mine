@@ -28,9 +28,15 @@ public class MarkerViewMonthData extends MarkViewMine {
     private TextView mTvDate;
     private Entry mEntry;
     private OnClickListener mListener;
+    private boolean mShowExpense;
 
     public MarkerViewMonthData(Context context, int layoutResource) {
+        this(context, layoutResource, true);
+    }
+
+    public MarkerViewMonthData(Context context, int layoutResource, boolean showExpense) {
         super(context, layoutResource);
+        mShowExpense = showExpense;
         mTvData = findViewById(R.id.tvData);
         mTvDate = findViewById(R.id.tvDate);
         CommonBindAdapter.setTypeFace(mTvData, Font.QUICKSAND_MEDIUM);
@@ -50,13 +56,18 @@ public class MarkerViewMonthData extends MarkViewMine {
     @Override
     public void refreshContent(Entry e, Highlight highlight) {
         mEntry = e;
+        if (e == null || !(e.getData() instanceof MonthlyEntryData)) {
+            mTvDate.setText("");
+            mTvData.setText("");
+            super.refreshContent(e, highlight);
+            return;
+        }
         MonthlyEntryData entryData = (MonthlyEntryData) e.getData();
         Month month = entryData.getMonth();
         String monthInfo = ResUtils.getString(getContext(), R.string.tally_month_info_format,
                 month.getYear(), month.getMonth());
-        String moneyInfo = ResUtils.getString(getContext(), R.string.tally_income_and_expense_format,
-                "¥" + TallyUtils.formatDisplayMoney(entryData.getIncomeAmount()),
-                "¥" + TallyUtils.formatDisplayMoney(entryData.getExpenseAmount()));
+        double amount = mShowExpense ? entryData.getExpenseAmount() : entryData.getIncomeAmount();
+        String moneyInfo = "¥" + TallyUtils.formatDisplayMoney(amount);
         mTvDate.setText(monthInfo);
         mTvData.setText(moneyInfo);
         super.refreshContent(e, highlight);
