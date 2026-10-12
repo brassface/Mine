@@ -41,6 +41,7 @@
     <!-- Menu item open About Activity -->
     <string name="menu_tall_about">关于</string>
     <string name="menu_tally_records">账单记录</string>
+    <string name="menu_tally_account">资产详情</string>
     <string name="menu_tally_setting">设置</string>
     <string name="menu_tally_chart">账单详情</string>
     <string name="menu_tally_search">搜索</string>
@@ -52,6 +53,7 @@
     <!--  toolbar title of tally main activity -->
     <string name="tally_toolbar_title_main">@string/app_name</string>
     <string name="tally_toolbar_title_about">关于</string>
+    <string name="tally_toolbar_title_account">资产详情</string>
     <string name="tally_toolbar_title_chart">账单详情</string>
     <string name="tally_toolbar_title_records">账单记录</string>
     <string name="tally_toolbar_title_setting">设置</string>
@@ -220,5 +222,22 @@
     <string name="permission_storage_desc">导出数据到磁盘或从磁盘中导入数据</string>
     <string name="permission_phone">手机/电话权限</string>
     <string name="permission_phone_desc">统计应用崩溃信息</string>
+
+    <!-- account -->
+    <string name="tally_account_default_name">现金</string>
+    <string name="tally_account_select">选择资产</string>
+    <string name="tally_account_manage">管理账户</string>
+    <string name="tally_account_add">新增资产</string>
+    <string name="tally_account_name_hint">请输入资产名称</string>
+    <string name="tally_account_balance_hint">请输入初始余额</string>
+    <string name="tally_account_name_empty">资产名称不能为空</string>
+    <string name="tally_account_set_default">设为默认</string>
+    <string name="tally_account_default_tag">默认</string>
+    <string name="tally_account_selected">已选</string>
+    <string name="tally_account_select_required">请先选择资产账户</string>
+    <string name="tally_account_not_found">账户不存在</string>
+    <string name="tally_account_delete_confirm_msg">确认删除资产「%1$s」？</string>
+    <string name="tally_account_delete_has_record">该资产下还有账单记录，无法删除</string>
+    <string name="tally_account_delete_last_forbid">至少保留一个资产账户</string>
 
 </resources>

@@ -70,6 +70,9 @@ public class RecordEditFragment extends Fragment {
         mViewModel.getCurrentSelectCategory().observe(this, category -> {
             mBinding.setCategory(category);
         });
+        mViewModel.getCurrentSelectAccount().observe(this, account -> {
+            mBinding.setAccount(account);
+        });
         mViewModel.getActivityRelayTask().observe(this, task -> {
             if (task != null) {
                 task.execute(getActivity());

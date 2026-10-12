@@ -18,6 +18,8 @@ public class BackupModel {
 
     @JSONField(name = "metadata")
     private BackupModelMetadata metadata;
+    @JSONField(name = "account_list")
+    private List<BackupModelAccount> accountList;
     @JSONField(name = "category_list")
     private List<BackupModelCategory> categoryList;
     @JSONField(name = "expense_list")
@@ -29,6 +31,14 @@ public class BackupModel {
 
     public void setMetadata(BackupModelMetadata metadata) {
         this.metadata = metadata;
+    }
+
+    public List<BackupModelAccount> getAccountList() {
+        return accountList;
+    }
+
+    public void setAccountList(List<BackupModelAccount> accountList) {
+        this.accountList = accountList;
     }
 
     public List<BackupModelCategory> getCategoryList() {

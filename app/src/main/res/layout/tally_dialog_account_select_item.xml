@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+
+    <data class=".dialog.ItemAccountSelectBinding">
+
+        <import type="android.view.View" />
+
+        <import type="com.coderpage.mine.app.tally.common.utils.TallyUtils" />
+
+        <variable
+            name="data"
+            type="com.coderpage.mine.app.tally.persistence.model.Account" />
+
+        <variable
+            name="selected"
+            type="boolean" />
+    </data>
+
+    <android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_clickable_view_40dp"
+        android:minHeight="52dp"
+        android:paddingStart="@dimen/padding_normal"
+        android:paddingEnd="@dimen/padding_normal">
+
+        <TextView
+            android:id="@+id/tvName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@{data.name}"
+            android:textColor="@color/appTextColorPrimary"
+            android:textSize="@dimen/app_text_size_normal"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/tvBalance"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="现金" />
+
+        <TextView
+            android:id="@+id/tvBalance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/padding_micro"
+            android:text="@{`¥` + TallyUtils.formatDisplayMoney(data.balance)}"
+            android:textColor="@color/appTextColorSecondary"
+            android:textSize="@dimen/app_text_size_small"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/tvSelected"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="¥100.00" />
+
+        <TextView
+            android:id="@+id/tvSelected"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/tally_account_selected"
+            android:textColor="?attr/colorAccent"
+            android:textSize="@dimen/app_text_size_small"
+            android:visibility="@{selected ? View.VISIBLE : View.GONE}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </android.support.constraint.ConstraintLayout>
+
+</layout>

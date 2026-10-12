@@ -16,6 +16,7 @@ import android.text.TextUtils;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.alibaba.android.arouter.launcher.ARouter;
 import com.coderpage.base.utils.ArrayUtils;
 import com.coderpage.base.utils.CommonUtils;
 import com.coderpage.base.utils.ResUtils;
@@ -23,14 +24,21 @@ import com.coderpage.base.utils.UIUtils;
 import com.coderpage.framework.ViewReliedTask;
 import com.coderpage.mine.R;
 import com.coderpage.mine.app.tally.common.RecordType;
+import com.coderpage.mine.app.tally.common.router.TallyRouter;
 import com.coderpage.mine.app.tally.data.CategoryIconHelper;
+import com.coderpage.mine.app.tally.eventbus.EventAccountAdd;
+import com.coderpage.mine.app.tally.eventbus.EventAccountDelete;
+import com.coderpage.mine.app.tally.eventbus.EventAccountUpdate;
 import com.coderpage.mine.app.tally.eventbus.EventCategoryAdd;
 import com.coderpage.mine.app.tally.eventbus.EventCategoryOrderChange;
 import com.coderpage.mine.app.tally.eventbus.EventCategoryUpdate;
 import com.coderpage.mine.app.tally.eventbus.EventRecordAdd;
 import com.coderpage.mine.app.tally.eventbus.EventRecordUpdate;
+import com.coderpage.mine.app.tally.module.account.AccountRepository;
+import com.coderpage.mine.app.tally.module.account.AccountSelectDialog;
 import com.coderpage.mine.app.tally.module.edit.category.CategoryManagerActivity;
 import com.coderpage.mine.app.tally.module.edit.model.Category;
+import com.coderpage.mine.app.tally.persistence.model.Account;
 import com.coderpage.mine.app.tally.persistence.model.CategoryModel;
 import com.coderpage.mine.app.tally.persistence.model.Record;
 import com.coderpage.mine.app.tally.ui.dialog.TextEditDialog;
@@ -67,6 +75,7 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
     private Record mRecord;
     private Category mCategorySettingItem;
     private RecordRepository mRepository;
+    private AccountRepository mAccountRepository;
 
     /** 币种单位 */
     private ObservableField<String> mAmountUnit = new ObservableField<>("¥");
@@ -80,6 +89,8 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
     private MutableLiveData<Category> mCurrentSelectCategory = new MutableLiveData<>();
     /** 支付分类列表 */
     private MutableLiveData<List<Category>> mCategoryList = new MutableLiveData<>();
+    /** 当前选择的账户 */
+    private MutableLiveData<Account> mCurrentSelectAccount = new MutableLiveData<>();
 
     private MutableLiveData<ViewReliedTask<Activity>> mActivityRelayTask = new MutableLiveData<>();
 
@@ -93,6 +104,7 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
         mDateFormat = new SimpleDateFormat(ResUtils.getString(
                 application, R.string.date_format_y_m_d) + " HH:mm", Locale.getDefault());
         mRepository = new RecordRepository();
+        mAccountRepository = new AccountRepository();
         mAmountText.set("0");
         mDate = System.currentTimeMillis();
         mDateText.set(mDateFormat.format(new Date(mDate)));
@@ -122,8 +134,38 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
         return mCategoryList;
     }
 
+    public LiveData<Account> getCurrentSelectAccount() {
+        return mCurrentSelectAccount;
+    }
+
     LiveData<ViewReliedTask<Activity>> getActivityRelayTask() {
         return mActivityRelayTask;
+    }
+
+    /** 选择账户点击 */
+    public void onAccountClick(Activity activity) {
+        mAccountRepository.queryAll(accountList -> {
+            long selectedId = mCurrentSelectAccount.getValue() == null
+                    ? 0 : mCurrentSelectAccount.getValue().getId();
+            new AccountSelectDialog(activity)
+                    .setSelectedAccountId(selectedId)
+                    .setAccountList(accountList)
+                    .setListener(new AccountSelectDialog.Listener() {
+                        @Override
+                        public void onAccountSelected(DialogInterface dialog, Account account) {
+                            mCurrentSelectAccount.setValue(account);
+                            dialog.dismiss();
+                        }
+
+                        @Override
+                        public void onManageClick(DialogInterface dialog) {
+                            dialog.dismiss();
+                            mActivityRelayTask.setValue(act ->
+                                    ARouter.getInstance().build(TallyRouter.ACCOUNT).navigation(act));
+                        }
+                    })
+                    .show();
+        });
     }
 
     /** 消费分类点击 */
@@ -258,6 +300,41 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
             if (category != null) {
                 mCurrentSelectCategory.setValue(category);
             }
+            bindAccountForRecord(mRecord.getAccountId());
+        });
+    }
+
+    private void initAccountData() {
+        if (mRecord != null && mRecord.getAccountId() > 0) {
+            bindAccountForRecord(mRecord.getAccountId());
+            return;
+        }
+        mAccountRepository.queryDefault(account -> {
+            if (account != null) {
+                mCurrentSelectAccount.setValue(account);
+            }
+        });
+    }
+
+    private void bindAccountForRecord(long accountId) {
+        if (accountId <= 0) {
+            mAccountRepository.queryDefault(account -> {
+                if (account != null) {
+                    mCurrentSelectAccount.setValue(account);
+                }
+            });
+            return;
+        }
+        mAccountRepository.queryById(accountId, account -> {
+            if (account != null) {
+                mCurrentSelectAccount.setValue(account);
+            } else {
+                mAccountRepository.queryDefault(defaultAccount -> {
+                    if (defaultAccount != null) {
+                        mCurrentSelectAccount.setValue(defaultAccount);
+                    }
+                });
+            }
         });
     }
 
@@ -317,6 +394,11 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
             Toast.makeText(getApplication(), "no category", Toast.LENGTH_SHORT).show();
             return;
         }
+        Account account = mCurrentSelectAccount.getValue();
+        if (account == null || account.getId() <= 0) {
+            Toast.makeText(getApplication(), R.string.tally_account_select_required, Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         boolean isNewRecord = mRecord == null;
         Record record;
@@ -327,6 +409,7 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
             record.setType(mType == RecordType.EXPENSE ? Record.TYPE_EXPENSE : Record.TYPE_INCOME);
             record.setSyncId(AndroidUtils.generateUUID());
         }
+        record.setAccountId(account.getId());
         record.setAmount(mAmount);
         record.setTime(mDate);
         record.setDesc(TextUtils.isEmpty(mDesc.get()) ? "" : mDesc.get());
@@ -384,6 +467,7 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
                 ? CategoryModel.TYPE_EXPENSE : CategoryModel.TYPE_INCOME);
         setRecordId(recordId);
         initData();
+        initAccountData();
 
         EventBus.getDefault().register(this);
     }
@@ -411,5 +495,34 @@ public class RecordViewModel extends AndroidViewModel implements LifecycleObserv
         if (event.getCategoryType() == CategoryModel.TYPE_INCOME && mType == RecordType.INCOME) {
             refreshCategoryList();
         }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEventAccountAdd(EventAccountAdd event) {
+        refreshSelectedAccount();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEventAccountUpdate(EventAccountUpdate event) {
+        refreshSelectedAccount();
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEventAccountDelete(EventAccountDelete event) {
+        Account current = mCurrentSelectAccount.getValue();
+        if (current != null && current.getId() == event.getAccountId()) {
+            initAccountData();
+        } else {
+            refreshSelectedAccount();
+        }
+    }
+
+    private void refreshSelectedAccount() {
+        Account current = mCurrentSelectAccount.getValue();
+        if (current == null) {
+            initAccountData();
+            return;
+        }
+        bindAccountForRecord(current.getId());
     }
 }
