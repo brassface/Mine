@@ -110,6 +110,19 @@
             app:layout_constraintEnd_toEndOf="parent"
             tools:text="￥10000.00" />
 
+        <TextView
+            android:id="@+id/tvDailyBudgetLeft"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_micro"
+            android:onClick="@{() -> vm.onBudgetMoneyClick(activity)}"
+            android:text="@{vm.dailyBudgetLeft}"
+            android:textColor="@color/appTextColorThird"
+            android:textSize="@dimen/app_text_size_small"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvMonthBudgetLeft"
+            tools:text="日均剩余：￥100.00" />
+
         <android.support.v7.widget.AppCompatImageView
             selected="@{!vm.hideMoney}"
             android:layout_width="60dp"
@@ -135,7 +148,7 @@
             app:layout_constraintEnd_toStartOf="@id/tvChartTip"
             app:layout_constraintHorizontal_chainStyle="packed"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvMonthIncome"
+            app:layout_constraintTop_toBottomOf="@id/tvDailyBudgetLeft"
             app:srcCompat="@drawable/ic_chart" />
 
         <TextView

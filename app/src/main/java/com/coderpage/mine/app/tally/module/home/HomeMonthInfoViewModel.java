@@ -14,6 +14,7 @@ import com.coderpage.mine.app.tally.persistence.preference.SettingPreference;
 import com.coderpage.mine.app.tally.ui.dialog.SetBudgetMonthDialog;
 
 import java.text.DecimalFormat;
+import java.util.Calendar;
 
 /**
  * @author lc. 2019-04-06 23:40
@@ -33,6 +34,8 @@ public class HomeMonthInfoViewModel extends BaseViewModel {
     private ObservableField<String> mIncomeMoney = new ObservableField<>();
     /** 本月预算剩余金额 */
     private ObservableField<String> mBudgetLeftMoney = new ObservableField<>();
+    /** 预算剩余按本月剩余天数折算的日均 */
+    private ObservableField<String> mDailyBudgetLeft = new ObservableField<>();
 
     /** 是否隐藏金额 */
     private ObservableField<Boolean> mHideMoney = new ObservableField<>(false);
@@ -59,6 +62,10 @@ public class HomeMonthInfoViewModel extends BaseViewModel {
         return mBudgetLeftMoney;
     }
 
+    public ObservableField<String> getDailyBudgetLeft() {
+        return mDailyBudgetLeft;
+    }
+
     public ObservableField<Boolean> getHideMoney() {
         return mHideMoney;
     }
@@ -68,6 +75,7 @@ public class HomeMonthInfoViewModel extends BaseViewModel {
         mExpenseMoney.set(formatExpenseMoney(mData));
         mIncomeMoney.set(formatIncomeMoney(mData));
         mBudgetLeftMoney.set(formatBudgetLeftMoney(mData));
+        mDailyBudgetLeft.set(formatDailyBudgetLeft(mData));
     }
 
     /** 格式化本月支出总额 */
@@ -117,6 +125,32 @@ public class HomeMonthInfoViewModel extends BaseViewModel {
         return "¥" + mMoneyFormat.format(budgetLeftMoney);
     }
 
+    /**
+     * 日均剩余 = 预算剩余 / 本月剩余天数（含今天）
+     */
+    private String formatDailyBudgetLeft(HomeMonthModel data) {
+        Boolean hideMoney = mHideMoney.get();
+        if (hideMoney != null && hideMoney) {
+            return ResUtils.getString(getApplication(),
+                    R.string.tally_module_home_daily_budget_left, "****");
+        }
+        float budgetMonth = SettingPreference.getBudgetMonth(getApplication());
+        if (budgetMonth <= 0 || data == null) {
+            return ResUtils.getString(getApplication(),
+                    R.string.tally_module_home_daily_budget_left,
+                    ResUtils.getString(getApplication(), R.string.tally_module_home_non_budget_place_holder));
+        }
+        double budgetLeftMoney = budgetMonth - data.getMonthExpenseAmount();
+        Calendar calendar = Calendar.getInstance();
+        int daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+        int dayOfMonth = calendar.get(Calendar.DAY_OF_MONTH);
+        int daysLeft = Math.max(1, daysInMonth - dayOfMonth + 1);
+        double dailyLeft = budgetLeftMoney / daysLeft;
+        return ResUtils.getString(getApplication(),
+                R.string.tally_module_home_daily_budget_left,
+                "¥" + mMoneyFormat.format(dailyLeft));
+    }
+
     /** 本月消费、收入数据模块点击 */
     public void onMonthInfoClick(Activity activity) {
         activity.startActivity(new Intent(activity, TallyChartActivity.class));
@@ -134,7 +168,7 @@ public class HomeMonthInfoViewModel extends BaseViewModel {
     /** 预算金额点击 */
     public void onBudgetMoneyClick(Activity activity) {
         new SetBudgetMonthDialog(activity).setListener((dialog, budget) -> {
-            mBudgetLeftMoney.set(formatBudgetLeftMoney(mData));
+            refresh(mData);
             dialog.dismiss();
         }).show();
     }

@@ -23,7 +23,6 @@ import com.coderpage.mine.app.tally.module.records.RecordItemViewModel;
 import com.coderpage.mine.app.tally.module.search.SearchActivity;
 import com.coderpage.mine.app.tally.ui.dialog.PermissionReqDialog;
 import com.coderpage.mine.app.tally.ui.refresh.RefreshHeadView;
-import com.coderpage.mine.app.tally.update.UpdateUtils;
 import com.coderpage.mine.ui.BaseActivity;
 import com.coderpage.mine.ui.widget.recyclerview.ItemMarginDecoration;
 import com.coderpage.mine.utils.AndroidUtils;
@@ -70,7 +69,8 @@ public class HomeActivity extends BaseActivity {
     @Override
     public void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        UpdateUtils.checkPersistedNewVersionAndShowUpdateConfirmDialog(this);
+        // 启动后不再根据上次检查结果弹出更新确认
+        // UpdateUtils.checkPersistedNewVersionAndShowUpdateConfirmDialog(this);
         handlePermission();
     }
 
