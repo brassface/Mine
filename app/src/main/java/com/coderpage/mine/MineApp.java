@@ -8,7 +8,7 @@ import com.alibaba.android.arouter.launcher.ARouter;
 import com.coderpage.base.utils.UIUtils;
 import com.coderpage.base.widget.LoadingLayout;
 import com.coderpage.framework.Framework;
-import com.tendcloud.tenddata.TCAgent;
+import com.coderpage.mine.crash.LocalCrashHandler;
 
 /**
  * @author abner-l. 2017-02-05
@@ -23,15 +23,12 @@ public class MineApp extends Application {
     public void onCreate() {
         super.onCreate();
         mAppContext = this;
+        LocalCrashHandler.install(this);
         Global.init(this);
         Framework.onAppOnCreate();
         if (BuildConfig.DEBUG) {
             ARouter.openDebug();
             ARouter.openLog();
-        }
-        if (!BuildConfig.DEBUG) {
-            TCAgent.init(this, BuildConfig.TALKING_DATA_APP_ID, BuildConfig.FLAVOR);
-            TCAgent.setReportUncaughtExceptions(true);
         }
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true);
         // 检查更新已暂时移除，不再请求原作者的更新服务

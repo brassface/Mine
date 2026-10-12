@@ -20,7 +20,7 @@ import com.coderpage.base.utils.ResUtils;
 import com.coderpage.framework.BaseViewModel;
 import com.coderpage.mine.R;
 import com.coderpage.mine.app.tally.common.permission.PermissionReqHandler;
-import com.tendcloud.tenddata.TCAgent;
+import com.coderpage.mine.crash.LocalCrashHandler;
 
 import java.io.File;
 import java.util.Date;
@@ -247,7 +247,7 @@ public class BackupFileViewModel extends BaseViewModel {
             public void success(BackupModel backupModel) {
                 mProcessMessage.postValue(null);
                 if (backupModel == null) {
-                    TCAgent.onError(getApplication(), new IllegalStateException("备份文件读取失败"));
+                    LocalCrashHandler.record(getApplication(), new IllegalStateException("备份文件读取失败"));
                     return;
                 }
                 runOnUiThread(() -> callback.success(backupModel));

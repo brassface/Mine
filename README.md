@@ -1,6 +1,6 @@
 # Mine
 
-一个简单、易用的记账应用。当前版本 0.8.0。
+一个简单、易用的记账应用。当前版本 0.8.1。
 
 安装包发布在 [Releases](https://github.com/brassface/Mine/releases)。
 

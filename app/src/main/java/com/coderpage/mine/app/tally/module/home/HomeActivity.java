@@ -45,8 +45,7 @@ public class HomeActivity extends BaseActivity {
     private PermissionReqHandler mPermissionReqHandler;
     private String[] mNeedPermissionArray = new String[]{
             Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_PHONE_STATE};
+            Manifest.permission.WRITE_EXTERNAL_STORAGE};
 
     private HomeViewModel mViewModel;
     private com.coderpage.mine.app.tally.module.home.HomeActivityBinding mBinding;
