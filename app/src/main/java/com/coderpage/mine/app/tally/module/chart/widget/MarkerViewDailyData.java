@@ -47,6 +47,12 @@ public class MarkerViewDailyData extends MarkViewMine {
     @Override
     public void refreshContent(Entry e, Highlight highlight) {
         mEntry = e;
+        if (e == null || !(e.getData() instanceof DailyData)) {
+            mTvDate.setText("");
+            mTvData.setText("");
+            super.refreshContent(e, highlight);
+            return;
+        }
         DailyData dailyData = (DailyData) e.getData();
         String dayInfo = ResUtils.getString(getContext(), R.string.tally_day_info_format,
                 dailyData.getYear(), dailyData.getMonth(), dailyData.getDayOfMonth());

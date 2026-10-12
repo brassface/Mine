@@ -204,11 +204,39 @@
                     android:layout_marginRight="@dimen/spacing_micro"
                     android:background="@drawable/bg_common_card_white">
 
+                    <android.support.v7.widget.AppCompatImageView
+                        android:id="@+id/ivPrevDay"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_clickable_view_40dp"
+                        android:onClick="@{() -> vm.onPrevDayClick()}"
+                        android:padding="12dp"
+                        android:rotation="180"
+                        android:visibility="visible"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:srcCompat="@drawable/ic_icon_arrow_right_gray"
+                        app:tint="@color/appTextColorPrimary" />
+
+                    <android.support.v7.widget.AppCompatImageView
+                        android:id="@+id/ivNextDay"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_clickable_view_40dp"
+                        android:onClick="@{() -> vm.onNextDayClick()}"
+                        android:padding="12dp"
+                        android:visibility="visible"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:srcCompat="@drawable/ic_icon_arrow_right_gray"
+                        app:tint="@color/appTextColorPrimary" />
+
                     <!-- 柱状图，展示日账单 -->
                     <com.coderpage.mine.app.tally.module.chart.widget.MineBarChart
                         android:id="@+id/barChart"
                         android:layout_width="match_parent"
                         android:layout_height="200dp"
+                        android:layout_marginTop="36dp"
                         android:layout_marginBottom="@dimen/spacing_normal"
                         android:visibility="@{vm.displayDailyChart ? View.VISIBLE : View.GONE}"
                         app:layout_constraintBottom_toBottomOf="parent"
@@ -221,6 +249,7 @@
                         android:id="@+id/lineChart"
                         android:layout_width="match_parent"
                         android:layout_height="200dp"
+                        android:layout_marginTop="36dp"
                         android:layout_marginBottom="@dimen/spacing_normal"
                         android:visibility="@{vm.displayDailyChart ? View.GONE : View.VISIBLE}"
                         app:layout_constraintBottom_toBottomOf="parent"

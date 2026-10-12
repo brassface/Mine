@@ -84,6 +84,7 @@
     <string name="tally_chart_empty_tip">暂无数据&#8230;</string>
     <string name="tally_bill_of_year_format" formatted="false">%s年账单</string>
     <string name="tally_bill_of_month_format" formatted="false">%s年%s月账单</string>
+    <string name="tally_bill_of_day_format" formatted="false">%s年%s月%s日账单</string>
     <string name="tally_expense_data_format" formatted="false">共%s笔支出，%s</string>
     <string name="tally_income_data_format" formatted="false">共%s笔收入，%s</string>
 

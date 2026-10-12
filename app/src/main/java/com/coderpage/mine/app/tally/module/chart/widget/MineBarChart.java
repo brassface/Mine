@@ -35,8 +35,49 @@ public class MineBarChart extends BarChart {
     @Override
     protected void init() {
         super.init();
-        mChartTouchListener = new MineLineChartTouchListener(this, mViewPortHandler.getMatrixTouch(), 3f);
+        MineLineChartTouchListener touchListener =
+                new MineLineChartTouchListener(this, mViewPortHandler.getMatrixTouch(), 3f);
+        // 日柱图：同柱再点不取消；当月下点空白不重复回调
+        touchListener.setStableSelection(true);
+        // 不响应顶部 Marker 点击跳转列表，点上方按空白处理
+        touchListener.setMarkerClickEnabled(false);
+        mChartTouchListener = touchListener;
         mRenderer = new MineBarChartRenderer(this, mAnimator, mViewPortHandler);
+        setHighlighter(new StrictBarHighlighter(this));
+    }
+
+    /**
+     * 程序化高亮并同步触摸层的 lastHighlighted，避免再点同一柱被当成「切换」
+     */
+    public void highlightIndexSilently(int index) {
+        if (index < 0 || getData() == null || getData().getDataSetCount() <= 0) {
+            highlightValues(null);
+            if (mChartTouchListener != null) {
+                mChartTouchListener.setLastHighlighted(null);
+            }
+            return;
+        }
+        int entryCount = getData().getDataSetByIndex(0).getEntryCount();
+        if (index >= entryCount) {
+            highlightValues(null);
+            if (mChartTouchListener != null) {
+                mChartTouchListener.setLastHighlighted(null);
+            }
+            return;
+        }
+        highlightValue(index, 0, false);
+        Highlight[] highs = getHighlighted();
+        if (mChartTouchListener != null) {
+            mChartTouchListener.setLastHighlighted(
+                    highs != null && highs.length > 0 ? highs[0] : null);
+        }
+    }
+
+    public void clearHighlightSilently() {
+        highlightValues(null);
+        if (mChartTouchListener != null) {
+            mChartTouchListener.setLastHighlighted(null);
+        }
     }
 
     public void setDrawMarkOnTop(boolean drawMarkOnTop) {
@@ -77,10 +118,13 @@ public class MineBarChart extends BarChart {
             IDataSet set = mData.getDataSetByIndex(highlight.getDataSetIndex());
 
             Entry e = mData.getEntryForHighlight(mIndicesToHighlight[i]);
+            if (e == null || set == null) {
+                continue;
+            }
             int entryIndex = set.getEntryIndex(e);
 
             // make sure entry not null
-            if (e == null || entryIndex > set.getEntryCount() * mAnimator.getPhaseX()) {
+            if (entryIndex < 0 || entryIndex > set.getEntryCount() * mAnimator.getPhaseX()) {
                 continue;
             }
 
