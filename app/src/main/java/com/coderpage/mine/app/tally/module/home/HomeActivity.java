@@ -69,8 +69,7 @@ public class HomeActivity extends BaseActivity {
     @Override
     public void onPostCreate(@Nullable Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        // 启动后不再根据上次检查结果弹出更新确认
-        // UpdateUtils.checkPersistedNewVersionAndShowUpdateConfirmDialog(this);
+        // 检查更新已暂时移除，进入首页不再提示更新
         handlePermission();
     }
 

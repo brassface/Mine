@@ -157,20 +157,19 @@
     <!-- about activity -->
     <string name="tally_about_title_app_info">应用信息</string>
     <string name="tally_about_title_version">版本</string>
-    <string name="tally_about_check_new_version">检查更新</string>
-    <string name="tally_about_find_new_version" formatted="false">新版本 %s(%d)</string>
     <string name="tally_about_title_about_app">关于应用</string>
-    <string name="tally_about_about_app_content">周末业余时间写了这个应用，平时记记自己的消费支出，本着简单、干净、够用即可的原则（主要是水平有限），由于个人开发，难免有些问题，希望大家多多提意见，我也会一直维护下去的。</string>
+    <string name="tally_about_about_app_content">一个简单、易用的记账软件。可以记录日常收支，管理分类和资产账户，也能查看账单图表与预算剩余。打开就能记一笔，界面也比较干净。\n\n功能还不算多，维护也是业余时间在做，不完善的地方请多包涵。原作者有一段时间没有更新，这个软件用着还挺顺手，希望能继续维护下去。新版本安装包会发布到下面的软件发布页，供下载更新。如有建议，欢迎发邮件到维护邮箱，或在 GitHub 提交需求。</string>
+    <string name="tally_about_release_page">软件发布页：https://github.com/brassface/Mine/releases</string>
     <string name="tally_about_title_developer_info">开发者</string>
-    <string name="tally_about_title_about_me">关于我</string>
-    <string name="tally_about_about_me_content">Android 程序员</string>
-    <string name="tally_about_title_send_email">发送邮件</string>
-    <string name="tally_about_send_email_content">我的个人邮箱 codenobug@163.com ，有问题可以给我发邮件。</string>
+    <string name="tally_about_title_original_author">原作者</string>
+    <string name="tally_about_original_email">个人邮箱：codenobug@163.com</string>
     <string name="tally_about_title_wechat">微信公众号</string>
-    <string name="tally_about_wechat_content">微信公众号：MINE应用；可以通过公众号反馈意见或者BUG</string>
+    <string name="tally_about_wechat_content">微信公众号：miniapp</string>
     <string name="tally_about_wechat_copied">微信公众号已复制</string>
-    <string name="tally_about_title_source_code">源代码</string>
-    <string name="tally_about_source_code_content">代码已托管在 GitHub(https://github.com/coderpage/Mine) 上，欢迎吐槽我的渣渣代码。</string>
+    <string name="tally_about_original_github">Github 仓库：https://github.com/coderpage/Mine</string>
+    <string name="tally_about_title_maintainer">维护</string>
+    <string name="tally_about_maintainer_email">个人邮箱：3543226907@qq.com</string>
+    <string name="tally_about_maintainer_github">Github 仓库：https://github.com/brassface/Mine</string>
 
     <string name="tyOther">其他</string>
     <string name="tyFoodAndBeverage">餐饮</string>

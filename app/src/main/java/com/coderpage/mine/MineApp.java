@@ -34,8 +34,7 @@ public class MineApp extends Application {
             TCAgent.setReportUncaughtExceptions(true);
         }
         AppCompatDelegate.setCompatVectorFromResourcesEnabled(true);
-        // 自动检查更新已关闭，仅在关于页手动检查
-        // UpdateUtils.startNewClientVersionCheckBackground(this);
+        // 检查更新已暂时移除，不再请求原作者的更新服务
         // 初始化 LoadingLayout
         initLoadingLayout();
         // 初始化 ARouter
